@@ -5,6 +5,7 @@ namespace Trikoder\Bundle\OAuth2Bundle\Controller;
 use League\OAuth2\Server\Exception\OAuthServerException;
 use League\OAuth2\Server\ResourceServer;
 use OpenIDConnectServer\ClaimExtractor;
+use OpenIDConnectServer\Entities\ClaimSetEntity;
 use OpenIDConnectServer\Repositories\IdentityProviderInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -21,6 +22,14 @@ final class UserInfoController
         $this->server = $server;
         $this->identityProvider = $identityProvider;
         $this->claimExtractor = $claimExtractor;
+
+        // define claimset for openid scope
+        $this->claimExtractor->addClaimSet(
+            new ClaimSetEntity('openid', [
+                'userId',
+                'roles'
+            ])
+        );
     }
 
     public function indexAction(ServerRequestInterface $serverRequest)
