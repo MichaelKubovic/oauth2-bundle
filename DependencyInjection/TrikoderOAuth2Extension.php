@@ -327,16 +327,6 @@ final class TrikoderOAuth2Extension extends Extension implements PrependExtensio
                 ->setClass(\Trikoder\Bundle\OAuth2Bundle\Grant\AuthCodeGrant::class)
                 ->setAutowired(true)
             ;
-            $container
-                ->getDefinition(AbstractGrant::class)
-                ->setClass(\Trikoder\Bundle\OAuth2Bundle\Grant\AuthCodeGrant::class)
-                ->setAutowired(true)
-            ;
-            $container
-                ->getDefinition(AuthorizationRequest::class)
-                ->setClass(\Trikoder\Bundle\OAuth2Bundle\OpenIDConnect\AuthorizationRequest::class)
-                ->setAutowired(true)
-            ;
         }
     }
 }
