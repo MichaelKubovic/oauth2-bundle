@@ -26,7 +26,7 @@ class AuthCodeGrant extends BaseAuthCodeGrant
 
     protected function issueAuthCode(DateInterval $authCodeTTL, ClientEntityInterface $client, $userIdentifier, $redirectUri, array $scopes = [], ?string $nonce = null)
     {
-        $autCode = parent::issueAuthCode($authCodeTTL, $client, $userIdentifier, $redirectUri, $scopes);
+        $autCode = parent::issueAuthCode($authCodeTTL, $client, $userIdentifier, $redirectUri, $scopes, $nonce);
 
         if ($nonce !== null) {
             $this->authCodeRepository->updateWithNonce($autCode, $nonce);
