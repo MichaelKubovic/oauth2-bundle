@@ -9,11 +9,13 @@ use Defuse\Crypto\Key;
 use Doctrine\Bundle\DoctrineBundle\DoctrineBundle;
 use League\OAuth2\Server\AuthorizationServer;
 use League\OAuth2\Server\CryptKey;
+use League\OAuth2\Server\Grant\AbstractGrant;
 use League\OAuth2\Server\Grant\AuthCodeGrant;
 use League\OAuth2\Server\Grant\ClientCredentialsGrant;
 use League\OAuth2\Server\Grant\ImplicitGrant;
 use League\OAuth2\Server\Grant\PasswordGrant;
 use League\OAuth2\Server\Grant\RefreshTokenGrant;
+use League\OAuth2\Server\RequestTypes\AuthorizationRequest;
 use League\OAuth2\Server\ResourceServer;
 use LogicException;
 use Sensio\Bundle\FrameworkExtraBundle\SensioFrameworkExtraBundle;
@@ -318,6 +320,22 @@ final class TrikoderOAuth2Extension extends Extension implements PrependExtensio
             $container
                 ->getDefinition(AuthorizationRequestAuthenticationResolvingListener::class)
                 ->setArgument(5, $openid_connect['login_route'])
+            ;
+
+            $container
+                ->getDefinition(AuthCodeGrant::class)
+                ->setClass(\Trikoder\Bundle\OAuth2Bundle\Grant\AuthCodeGrant::class)
+                ->setAutowired(true)
+            ;
+            $container
+                ->getDefinition(AbstractGrant::class)
+                ->setClass(\Trikoder\Bundle\OAuth2Bundle\Grant\AuthCodeGrant::class)
+                ->setAutowired(true)
+            ;
+            $container
+                ->getDefinition(AuthorizationRequest::class)
+                ->setClass(\Trikoder\Bundle\OAuth2Bundle\OpenIDConnect\AuthorizationRequest::class)
+                ->setAutowired(true)
             ;
         }
     }

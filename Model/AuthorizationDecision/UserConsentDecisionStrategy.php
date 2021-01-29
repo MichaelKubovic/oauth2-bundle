@@ -132,6 +132,10 @@ class UserConsentDecisionStrategy implements AuthorizationDecisionStrategy
         if (null !== $scope) {
             $params['scope'] = $scope;
         }
+        $nonce = $event->getNonce();
+        if (null !== $nonce) {
+            $params['nonce'] = $nonce;
+        }
 
         $redirectUri = $this->urlGenerator->generate($this->consentApprovalRoute, $params);
         return new Response\RedirectResponse($redirectUri);

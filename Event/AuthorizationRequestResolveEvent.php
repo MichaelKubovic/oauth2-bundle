@@ -156,4 +156,9 @@ final class AuthorizationRequestResolveEvent extends Event
     {
         return $this->authorizationRequest->getCodeChallengeMethod();
     }
+
+    public function getNonce(): string
+    {
+        return $this->authorizationRequest->getNonce();
+    }
 }

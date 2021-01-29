@@ -15,24 +15,21 @@ use Trikoder\Bundle\OAuth2Bundle\OpenIDConnect\IdTokenResponse;
  */
 class AuthCodeGrant extends BaseAuthCodeGrant
 {
-    /** @var string|null */
-    private $nonce;
-
     public function validateAuthorizationRequest(ServerRequestInterface $request)
     {
         $authorizationRequest = parent::validateAuthorizationRequest($request);
 
-        $this->nonce = $this->getQueryStringParameter('nonce', $request, null);
+        $authorizationRequest->setNonce($this->getQueryStringParameter('nonce', $request, null));
 
         return $authorizationRequest;
     }
 
-    protected function issueAuthCode(DateInterval $authCodeTTL, ClientEntityInterface $client, $userIdentifier, $redirectUri, array $scopes = [])
+    protected function issueAuthCode(DateInterval $authCodeTTL, ClientEntityInterface $client, $userIdentifier, $redirectUri, array $scopes = [], ?string $nonce = null)
     {
         $autCode = parent::issueAuthCode($authCodeTTL, $client, $userIdentifier, $redirectUri, $scopes);
 
-        if ($this->nonce !== null) {
-            $this->authCodeRepository->updateWithNonce($autCode, $this->nonce);
+        if ($nonce !== null) {
+            $this->authCodeRepository->updateWithNonce($autCode, $nonce);
         }
 
         return $autCode;
