@@ -18,6 +18,21 @@ class AuthorizationRequest extends BaseAuthorizationRequest
      */
     protected $nonce;
 
+
+    public static function createFromLeagueAuthorizationRequest(\League\OAuth2\Server\RequestTypes\AuthorizationRequest $authorization_request)
+    {
+        $self = new self();
+        $self->setState($authorization_request->getState());
+        $self->setGrantTypeId($authorization_request->getGrantTypeId());
+        $self->setCodeChallengeMethod($authorization_request->getCodeChallengeMethod());
+        $self->setCodeChallenge($authorization_request->getCodeChallenge());
+        $self->setClient($authorization_request->getClient());
+        $self->setRedirectUri($authorization_request->getRedirectUri());
+        $self->setScopes($authorization_request->getScopes());
+
+        return $self;
+    }
+
     /**
      * @return string|null
      */
