@@ -6,13 +6,12 @@ namespace Trikoder\Bundle\OAuth2Bundle\Grant;
 
 use DateInterval;
 use League\OAuth2\Server\Entities\ClientEntityInterface;
-use League\OAuth2\Server\Entities\UserEntityInterface;
 use League\OAuth2\Server\Exception\OAuthServerException;
 use League\OAuth2\Server\Grant\AuthCodeGrant as BaseAuthCodeGrant;
 use League\OAuth2\Server\Repositories\AuthCodeRepositoryInterface;
 use League\OAuth2\Server\Repositories\RefreshTokenRepositoryInterface;
+use League\OAuth2\Server\RequestEvent;
 use League\OAuth2\Server\RequestTypes\AuthorizationRequest;
-use League\OAuth2\Server\ResponseTypes\RedirectResponse;
 use League\OAuth2\Server\ResponseTypes\ResponseTypeInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Trikoder\Bundle\OAuth2Bundle\League\Repository\AuthCodeRepository;
@@ -36,8 +35,13 @@ class AuthCodeGrant extends BaseAuthCodeGrant
     public function validateAuthorizationRequest(ServerRequestInterface $request)
     {
         $authorizationRequest = parent::validateAuthorizationRequest($request);
+        $nonce = $this->getQueryStringParameter('nonce', $request, null);
+        if (!$nonce || $this->authCodeRepository->isNonceUsed($nonce)) {
+            $this->getEmitter()->emit(new RequestEvent(RequestEvent::ACCESS_TOKEN_ISSUED, $request));
+            throw new OAuthServerException('Nonce is not valid', 40, 'invalid_nonce');
+        }
         $authorizationRequest = \Trikoder\Bundle\OAuth2Bundle\OpenIDConnect\AuthorizationRequest::createFromLeagueAuthorizationRequest($authorizationRequest);
-        $authorizationRequest->setNonce($this->getQueryStringParameter('nonce', $request, null));
+        $authorizationRequest->setNonce($nonce);
 
         return $authorizationRequest;
     }
@@ -70,66 +74,10 @@ class AuthCodeGrant extends BaseAuthCodeGrant
 
     public function completeAuthorizationRequest(AuthorizationRequest $authorizationRequest)
     {
-        if (false === $authorizationRequest->getUser() instanceof UserEntityInterface) {
-            throw new \LogicException('An instance of UserEntityInterface should be set on the AuthorizationRequest');
-        }
-
-        $finalRedirectUri = $authorizationRequest->getRedirectUri()
-            ?? $this->getClientRedirectUri($authorizationRequest);
-
-        // The user approved the client, redirect them back with an auth code
-        if (true === $authorizationRequest->isAuthorizationApproved()) {
+        if ($authorizationRequest->isAuthorizationApproved()) {
             $this->nonce = $authorizationRequest->getNonce();
-            $authCode = $this->issueAuthCode(
-                $this->authCodeTTL,
-                $authorizationRequest->getClient(),
-                $authorizationRequest->getUser()->getIdentifier(),
-                $authorizationRequest->getRedirectUri(),
-                $authorizationRequest->getScopes()
-            );
-
-            $payload = [
-                'client_id' => $authCode->getClient()->getIdentifier(),
-                'redirect_uri' => $authCode->getRedirectUri(),
-                'auth_code_id' => $authCode->getIdentifier(),
-                'scopes' => $authCode->getScopes(),
-                'user_id' => $authCode->getUserIdentifier(),
-                'expire_time' => (new \DateTime())->add($this->authCodeTTL)->format('U'),
-                'code_challenge' => $authorizationRequest->getCodeChallenge(),
-                'code_challenge_method' => $authorizationRequest->getCodeChallengeMethod(),
-            ];
-
-            $response = new RedirectResponse();
-            $response->setRedirectUri(
-                $this->makeRedirectUri(
-                    $finalRedirectUri,
-                    [
-                        'code' => $this->encrypt(
-                            json_encode(
-                                $payload
-                            )
-                        ),
-                        'state' => $authorizationRequest->getState(),
-                    ]
-                )
-            );
-
-            return $response;
         }
 
-        // The user denied the client, redirect them back with an error
-        throw OAuthServerException::accessDenied('The user denied the request', $this->makeRedirectUri($finalRedirectUri, ['state' => $authorizationRequest->getState()]));
-    }
-
-    /**
-     * Get the client redirect URI if not set in the request.
-     *
-     * @return string
-     */
-    private function getClientRedirectUri(AuthorizationRequest $authorizationRequest)
-    {
-        return \is_array($authorizationRequest->getClient()->getRedirectUri())
-            ? $authorizationRequest->getClient()->getRedirectUri()[0]
-            : $authorizationRequest->getClient()->getRedirectUri();
+        return parent::completeAuthorizationRequest($authorizationRequest);
     }
 }

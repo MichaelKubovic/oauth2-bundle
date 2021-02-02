@@ -28,6 +28,12 @@ final class AuthorizationCodeManager implements AuthorizationCodeManagerInterfac
         return $this->entityManager->find(AuthorizationCode::class, $identifier);
     }
 
+
+    public function findByNonce(string $nonce)
+    {
+        return $this->entityManager->getRepository(AuthorizationCode::class)->findOneBy(['nonce' => $nonce]);
+    }
+
     /**
      * {@inheritdoc}
      */
