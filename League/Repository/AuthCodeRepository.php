@@ -126,4 +126,10 @@ final class AuthCodeRepository implements AuthCodeRepositoryInterface
             $this->scopeConverter->toDomainArray($authCode->getScopes())
         );
     }
+
+    public function isNonceUsed(string $nonce): bool
+    {
+        $auth_code = $this->authorizationCodeManager->findByNonce($nonce);
+        return $auth_code ? true : false;
+    }
 }
