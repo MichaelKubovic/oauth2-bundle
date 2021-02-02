@@ -5,12 +5,12 @@ declare(strict_types=1);
 namespace Trikoder\Bundle\OAuth2Bundle\Grant;
 
 use DateInterval;
+use Doctrine\DBAL\Connection;
 use League\OAuth2\Server\Entities\ClientEntityInterface;
 use League\OAuth2\Server\Exception\OAuthServerException;
 use League\OAuth2\Server\Grant\AuthCodeGrant as BaseAuthCodeGrant;
 use League\OAuth2\Server\Repositories\AuthCodeRepositoryInterface;
 use League\OAuth2\Server\Repositories\RefreshTokenRepositoryInterface;
-use League\OAuth2\Server\RequestEvent;
 use League\OAuth2\Server\RequestTypes\AuthorizationRequest;
 use League\OAuth2\Server\ResponseTypes\ResponseTypeInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -22,23 +22,31 @@ use Trikoder\Bundle\OAuth2Bundle\OpenIDConnect\IdTokenResponse;
  */
 class AuthCodeGrant extends BaseAuthCodeGrant
 {
+    /**
+     * @var Connection
+     */
+    protected $connection;
+
+    /**
+     * @var string
+     */
     private $nonce;
 
-    private $authCodeTTL;
-
-    public function __construct(AuthCodeRepositoryInterface $authCodeRepository, RefreshTokenRepositoryInterface $refreshTokenRepository, DateInterval $authCodeTTL)
+    public function __construct(AuthCodeRepositoryInterface $authCodeRepository, RefreshTokenRepositoryInterface $refreshTokenRepository, DateInterval $authCodeTTL, Connection $connection)
     {
         parent::__construct($authCodeRepository, $refreshTokenRepository, $authCodeTTL);
-        $this->authCodeTTL = $authCodeTTL;
+        $this->connection = $connection;
     }
 
     public function validateAuthorizationRequest(ServerRequestInterface $request)
     {
         $authorizationRequest = parent::validateAuthorizationRequest($request);
         $nonce = $this->getQueryStringParameter('nonce', $request, null);
-        if (!$nonce || $this->authCodeRepository->isNonceUsed($nonce)) {
-            $this->getEmitter()->emit(new RequestEvent(RequestEvent::ACCESS_TOKEN_ISSUED, $request));
-            throw new OAuthServerException('Nonce is not valid', 40, 'invalid_nonce');
+        if (!$nonce) {
+            throw new OAuthServerException('Nonce is required!', 40, 'nonce_is_required');
+        }
+        if ($this->authCodeRepository->isNonceUsed($nonce)) {
+            throw new OAuthServerException('Nonce is already used!', 41, 'nonce_is_used');
         }
         $authorizationRequest = \Trikoder\Bundle\OAuth2Bundle\OpenIDConnect\AuthorizationRequest::createFromLeagueAuthorizationRequest($authorizationRequest);
         $authorizationRequest->setNonce($nonce);
@@ -48,11 +56,13 @@ class AuthCodeGrant extends BaseAuthCodeGrant
 
     protected function issueAuthCode(DateInterval $authCodeTTL, ClientEntityInterface $client, $userIdentifier, $redirectUri, array $scopes = [])
     {
+        $this->connection->beginTransaction();
         $autCode = parent::issueAuthCode($authCodeTTL, $client, $userIdentifier, $redirectUri, $scopes);
 
         if (null !== $this->nonce) {
             $this->authCodeRepository->updateWithNonce($autCode, $this->nonce);
         }
+        $this->connection->commit();
 
         return $autCode;
     }
